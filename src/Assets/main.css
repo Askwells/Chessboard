@@ -1,0 +1,34 @@
+#Board {
+  display: flex;
+  flex-wrap: wrap-reverse;
+  width: 560px;
+  height: 560px;
+}
+
+.Square {
+  width: 70px;
+  height: 70px;
+  position: relative;
+}
+
+.Square.Light {
+  background-color: #f0dab5;
+}
+
+.Square.Dark {
+  background-color: #b58763;
+}
+
+.Piece {
+  width: 70px;
+  height: 70px;
+  user-select: none;
+  cursor: grab;
+}
+
+.Piece.Dragging {
+  position: fixed;
+  z-index: 1000;
+  cursor: grabbing;
+  will-change: left, top;
+}

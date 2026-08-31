@@ -1,15 +1,15 @@
 export enum Color {
-  WHITE = 'w',
-  BLACK = 'b',
+  White = 'w',
+  Black = 'b',
 }
 
 export enum PieceType {
-  PAWN = 'p',
-  KNIGHT = 'n',
-  BISHOP = 'b',
-  ROOK = 'r',
-  QUEEN = 'q',
-  KING = 'k',
+  Pawn = 'p',
+  Knight = 'n',
+  Bishop = 'b',
+  Rook = 'r',
+  Queen = 'q',
+  King = 'k',
 }
 
 export type Piece = {
@@ -17,9 +17,20 @@ export type Piece = {
   type: PieceType;
 };
 
+export enum MoveType {
+  Normal,
+  CastleKingside,
+  CastleQueenside,
+  DoublePawnPush,
+  EnPassant,
+  PawnPromotion,
+}
+
 export type Move = {
   originSquare: number;
   targetSquare: number;
+  type: MoveType;
+  piece: Piece;
 };
 
 export type Square = Piece | null;

@@ -4,6 +4,7 @@ import * as utils from '@/utils';
 
 export default function useBoard(initialState: Square[] = Array(64).fill(null)) {
   const board = ref<Square[]>(initialState);
+  const moveHistory = ref<string[]>([]);
 
   const loadFEN = (fen: FEN, boardState: Square[]) => {
     const fenFields = fen.split(' ');
@@ -19,7 +20,7 @@ export default function useBoard(initialState: Square[] = Array(64).fill(null)) 
       } else if (/^\d$/.test(char)) {
         currentFile += Number(char);
       } else {
-        const color = char === char.toLowerCase() ? Color.BLACK : Color.WHITE;
+        const color = char === char.toLowerCase() ? Color.Black : Color.White;
         const type = char.toLowerCase() as PieceType;
         boardState[utils.toIndex(currentRank, currentFile)] = { color, type };
         currentFile++;
@@ -27,5 +28,5 @@ export default function useBoard(initialState: Square[] = Array(64).fill(null)) 
     }
   };
 
-  return { board, loadFEN };
+  return { board, moveHistory, loadFEN };
 }

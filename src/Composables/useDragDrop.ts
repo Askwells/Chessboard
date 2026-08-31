@@ -1,4 +1,4 @@
-import type { Move, Piece, Square } from '@/types';
+import { MoveType, type Move, type Piece, type Square } from '@/types';
 import { ref } from 'vue';
 
 type DragState = {
@@ -13,8 +13,12 @@ type DragState = {
 
 let currentDrag = ref<DragState | null>(null);
 
-export default function useDragDrop(boardState: Square[]) {
+export default function useDragDrop(boardState: Square[], onMove: (move: Move) => void) {
   const dragStart = (ev: PointerEvent, square: number, piece: Piece) => {
+    if (ev.pointerType !== 'mouse') return;
+    // Accept only left mouse button input
+    if (ev.button !== 0) return;
+
     const pieceElement = ev.currentTarget as HTMLElement;
     const rect = pieceElement.getBoundingClientRect();
 
@@ -44,8 +48,12 @@ export default function useDragDrop(boardState: Square[]) {
     const squareElement = el?.closest('.Square') as HTMLElement | null;
 
     if (squareElement && boardState[Number(squareElement.id)] === null) {
-      boardState[Number(squareElement.id)] = currentDrag.value.piece;
-      boardState[currentDrag.value.originSquare] = null;
+      onMove({
+        originSquare: currentDrag.value.originSquare,
+        targetSquare: Number(squareElement.id),
+        type: MoveType.Normal,
+        piece: currentDrag.value.piece,
+      });
     }
 
     currentDrag.value.pieceElement.style.setProperty('pointer-events', 'all');

@@ -1,8 +1,7 @@
-import { MoveType, type Move, type Piece, type Square } from '@/types';
 import { ref } from 'vue';
+import * as c from '@/types';
 
 type DragState = {
-  piece: Piece;
   pieceElement: HTMLElement;
   originSquare: number;
   x: number;
@@ -13,8 +12,11 @@ type DragState = {
 
 let currentDrag = ref<DragState | null>(null);
 
-export default function useDragDrop(boardState: Square[], onMove: (move: Move) => void) {
-  const dragStart = (ev: PointerEvent, square: number, piece: Piece) => {
+export default function useDragDrop(
+  onDragStart: (square: number) => void,
+  onMove: (move: c.Move) => void,
+) {
+  const dragStart = (ev: PointerEvent, square: number) => {
     if (ev.pointerType !== 'mouse') return;
     // Accept only left mouse button input
     if (ev.button !== 0) return;
@@ -23,7 +25,6 @@ export default function useDragDrop(boardState: Square[], onMove: (move: Move) =
     const rect = pieceElement.getBoundingClientRect();
 
     currentDrag.value = {
-      piece,
       pieceElement,
       originSquare: square,
       x: ev.clientX,
@@ -31,6 +32,8 @@ export default function useDragDrop(boardState: Square[], onMove: (move: Move) =
       offsetX: ev.clientX - rect.left,
       offsetY: ev.clientY - rect.top,
     };
+
+    onDragStart(square);
   };
 
   const dragging = (ev: PointerEvent) => {
@@ -47,12 +50,11 @@ export default function useDragDrop(boardState: Square[], onMove: (move: Move) =
     const el = document.elementFromPoint(currentDrag.value.x, currentDrag.value.y);
     const squareElement = el?.closest('.Square') as HTMLElement | null;
 
-    if (squareElement && boardState[Number(squareElement.id)] === null) {
+    if (squareElement) {
       onMove({
         originSquare: currentDrag.value.originSquare,
         targetSquare: Number(squareElement.id),
-        type: MoveType.Normal,
-        piece: currentDrag.value.piece,
+        type: c.MoveType.Normal,
       });
     }
 

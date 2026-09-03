@@ -1,28 +1,55 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, computed } from 'vue';
-import * as utils from '@/utils.ts';
+import { onMounted, onUnmounted, computed } from 'vue';
+import * as utils from '@/utils';
+import * as c from '@/types';
 import useBoard from '@/Composables/useBoard';
 import useDragDrop from '@/Composables/useDragDrop';
-import type { Move, Piece } from '@/types';
 
-const { board, moveHistory, loadFEN } = useBoard();
-const { dragStart, dragging, dragEnd, currentDrag } = useDragDrop(board.value, (move: Move) => {
-  board.value[move.targetSquare] = move.piece;
-  board.value[move.originSquare] = null;
-});
-loadFEN('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', board.value);
+const { board8x8, loadFEN } = useBoard();
+const { dragStart, dragging, dragEnd, currentDrag } = useDragDrop(
+  (square: number) => {
+    onDragStart(square);
+  },
+  (move: c.Move) => {
+    onMove(move);
+  },
+);
 
-const getPieceImgURL = (piece: Piece) => {
-  return new URL(`../Assets/Images/${piece.color}${piece.type}.svg`, import.meta.url).href;
+const onDragStart = (square: number) => {
+  if (!squares.value[square]) return;
+  squares.value[square].highlighted = true;
+};
+
+const onMove = (move: c.Move) => {
+  if (move.originSquare === move.targetSquare) {
+    squares.value[move.originSquare]!.highlighted = false;
+    return;
+  }
+
+  board8x8.value[move.targetSquare] = board8x8.value[move.originSquare] as number;
+  board8x8.value[move.originSquare] = c.empty;
+
+  squares.value[move.originSquare]!.highlighted = true;
+  squares.value[move.targetSquare]!.highlighted = true;
+};
+
+loadFEN(board8x8.value);
+
+const getPieceImgURL = (piece: c.Piece) => {
+  return new URL(
+    `../Assets/Images/${utils.getPieceColor(piece) === c.Color.white ? 'w' : 'b'}${utils.pieceTypeToChar(utils.getPieceType(piece))}.svg`,
+    import.meta.url,
+  ).href;
 };
 
 const squares = computed(() =>
-  board.value.map((piece, index) => ({
+  board8x8.value.map((piece, index) => ({
     piece,
     index,
     isRankIndicator: utils.toFile(index) === 0,
     isFileIndicator: utils.toRank(index) === 0,
-    color: (utils.toRank(index) + utils.toFile(index)) % 2 === 0 ? 'Light' : 'Dark',
+    color: (utils.toRank(index) + utils.toFile(index)) % 2 !== 0 ? 'Light' : 'Dark',
+    highlighted: false,
   })),
 );
 
@@ -45,18 +72,20 @@ onUnmounted(() => {
         :key="square.index"
         :id="square.index.toString()"
         class="Square"
-        :class="square.color"
+        :class="[square.color, { Highlighted: square.highlighted }]"
       >
         <span v-if="square.isRankIndicator" :class="{ RankIndicator: square.isRankIndicator }">{{
           utils.toRank(square.index) + 1
         }}</span>
         <span v-if="square.isFileIndicator" :class="{ FileIndicator: square.isFileIndicator }">{{
-          utils.toAlgebraic(square.index)[0]
+          utils.indexToAlgebraic(square.index)[0]
         }}</span>
         <img
           v-if="square.piece"
           class="Piece"
-          :class="{ Dragging: currentDrag?.originSquare === square.index }"
+          :class="{
+            Dragging: currentDrag?.originSquare === square.index,
+          }"
           :style="
             currentDrag?.originSquare === square.index
               ? {
@@ -67,7 +96,7 @@ onUnmounted(() => {
           "
           :src="getPieceImgURL(square.piece)"
           draggable="false"
-          @pointerdown="(ev: PointerEvent) => dragStart(ev, square.index, square.piece!)"
+          @pointerdown="(ev: PointerEvent) => dragStart(ev, square.index)"
         />
       </div>
     </div>
@@ -95,6 +124,14 @@ onUnmounted(() => {
 
 .Square.Dark {
   background-color: #b58763;
+}
+
+.Square.Light.Highlighted {
+  background-color: #f6ec6f;
+}
+
+.Square.Dark.Highlighted {
+  background-color: #ddc348;
 }
 
 .Square.Light.LegalMove {

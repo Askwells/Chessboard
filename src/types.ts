@@ -1,21 +1,36 @@
-export enum Color {
-  White = 'w',
-  Black = 'b',
+// prettier-ignore
+export const enum PieceType {
+  pawn   =  1,
+  knight =  2,
+  bishop =  3,
+  rook   =  4,
+  queen  =  5,
+  king   =  6,
 }
 
-export enum PieceType {
-  Pawn = 'p',
-  Knight = 'n',
-  Bishop = 'b',
-  Rook = 'r',
-  Queen = 'q',
-  King = 'k',
+// prettier-ignore
+export const enum Piece {
+  whitePawn   =  1,
+  whiteKnight =  2,
+  whiteBishop =  3,
+  whiteRook   =  4,
+  whiteQueen  =  5,
+  whiteKing   =  6,
+  blackPawn   = -1,
+  blackKnight = -2,
+  blackBishop = -3,
+  blackRook   = -4,
+  blackQueen  = -5,
+  blackKing   = -6,
 }
 
-export type Piece = {
-  color: Color;
-  type: PieceType;
-};
+export const empty = 0;
+export const offBoard = -99;
+
+export const enum Color {
+  white = 0,
+  black = 1,
+}
 
 export enum MoveType {
   Normal,
@@ -30,9 +45,7 @@ export type Move = {
   originSquare: number;
   targetSquare: number;
   type: MoveType;
-  piece: Piece;
 };
 
-export type Square = Piece | null;
-
 export type FEN = string;
+export const startingPositionFEN = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';

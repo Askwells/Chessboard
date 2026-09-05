@@ -42,7 +42,7 @@ export default function useDragDrop(
     if (currentDrag.value) {
       currentDrag.value.x = ev.clientX;
       currentDrag.value.y = ev.clientY;
-      const hovered = squareUnderPoint(ev.clientX, ev.clientY);
+      const hovered = squareUnderPoint(currentDrag.value.x, currentDrag.value.y);
       currentDrag.value.hoveredSquare = hovered ? Number(hovered.id) : null;
     }
   };

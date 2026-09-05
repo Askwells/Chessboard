@@ -5,6 +5,8 @@ import * as c from '@/types';
 import * as mg from '@/moveGenerator';
 import useBoard from '@/Composables/useBoard';
 import useDragDrop from '@/Composables/useDragDrop';
+import moveSoundURL from '@/Assets/Sounds/move.mp3';
+import captureSoundURL from '@/Assets/Sounds/capture.mp3';
 
 const { board8x8, legalMoves, currentPlayer, switchPlayer, loadFEN } = useBoard();
 const { dragStart, dragging, dragEnd, currentDrag } = useDragDrop(
@@ -29,12 +31,12 @@ const onDragStart = (square: number) => {
 };
 
 const onDragEnd = (move: c.Move) => {
-  const isLegalMove = legalMoves.value.some(
+  const legalMove = legalMoves.value.find(
     (legalMove) =>
       legalMove.originSquare === move.originSquare && legalMove.targetSquare === move.targetSquare,
   );
 
-  if (!isLegalMove) {
+  if (!legalMove) {
     squares.value[move.originSquare]!.highlighted = false;
     squares.value.forEach((square) => {
       if (square.legalMove) square.legalMove = false;
@@ -43,11 +45,26 @@ const onDragEnd = (move: c.Move) => {
     return;
   }
 
-  board8x8.value[move.targetSquare] = board8x8.value[move.originSquare] as number;
-  board8x8.value[move.originSquare] = c.empty;
+  board8x8.value[legalMove.targetSquare] = board8x8.value[legalMove.originSquare] as number;
+  if (legalMove.type === c.MoveType.PawnPromotion) {
+    board8x8.value[legalMove.targetSquare] =
+      utils.getPieceColor(board8x8.value[legalMove.targetSquare]!) === c.Color.white
+        ? c.Piece.whiteQueen
+        : c.Piece.blackQueen;
+  }
+  board8x8.value[legalMove.originSquare] = c.empty;
 
-  squares.value[move.originSquare]!.highlighted = true;
-  squares.value[move.targetSquare]!.highlighted = true;
+  squares.value[legalMove.originSquare]!.highlighted = true;
+  squares.value[legalMove.targetSquare]!.highlighted = true;
+
+  if (legalMove.isCapture) {
+    const sound = new Audio(captureSoundURL);
+    sound.play();
+  } else {
+    const sound = new Audio(moveSoundURL);
+    sound.play();
+  }
+
   currentPlayer.value = switchPlayer(currentPlayer.value);
 };
 
@@ -55,7 +72,7 @@ loadFEN(board8x8.value);
 
 const getPieceImgURL = (piece: c.Piece) => {
   return new URL(
-    `../Assets/Images/${utils.getPieceColor(piece) === c.Color.white ? 'w' : 'b'}${utils.pieceTypeToChar(utils.getPieceType(piece))}.svg`,
+    `../Assets/Images/${utils.getPieceColor(piece) === c.Color.white ? 'w' : 'b'}${utils.pieceTypeToChar(utils.getPieceType(piece))}.png`,
     import.meta.url,
   ).href;
 };
@@ -137,6 +154,7 @@ onUnmounted(() => {
 <style scoped>
 * {
   font-family: 'Trebuchet MS', Arial, sans-serif;
+  font-weight: bold;
   box-sizing: border-box;
 }
 

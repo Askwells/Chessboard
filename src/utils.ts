@@ -1,5 +1,14 @@
 import * as c from '@/types';
 
+export const indices8x8To10x12 = Array.from({ length: 64 }, (_, index8x8) => {
+  return (toRank(index8x8) + 2) * 10 + (toFile(index8x8) + 1);
+});
+
+export const indices10x12To8x8 = new Array<number>(120).fill(c.offBoard);
+for (let index8x8 = 0; index8x8 < 64; index8x8++) {
+  indices10x12To8x8[indices8x8To10x12[index8x8]!] = index8x8;
+}
+
 export function toRank(index: number) {
   return Math.floor(index / 8);
 }
@@ -46,4 +55,14 @@ export function pieceTypeToChar(pieceType: c.PieceType) {
     [c.PieceType.king]: 'k',
   };
   return charMap[pieceType];
+}
+
+export function to10x12(boardState8x8: number[]): number[] {
+  const board10x12: number[] = new Array(120).fill(c.offBoard);
+
+  for (let index8x8 = 0; index8x8 < 64; index8x8++) {
+    board10x12[indices8x8To10x12[index8x8]!] = boardState8x8[index8x8] ?? c.empty;
+  }
+
+  return board10x12;
 }

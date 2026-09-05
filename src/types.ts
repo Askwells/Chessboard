@@ -45,6 +45,7 @@ export type Move = {
   originSquare: number;
   targetSquare: number;
   type: MoveType;
+  isCapture?: boolean;
 };
 
 export type FEN = string;

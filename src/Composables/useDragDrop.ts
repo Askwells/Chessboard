@@ -4,6 +4,7 @@ import * as c from '@/types';
 type DragState = {
   pieceElement: HTMLElement;
   originSquare: number;
+  hoveredSquare: number | null;
   x: number;
   y: number;
   offsetX: number;
@@ -14,7 +15,7 @@ let currentDrag = ref<DragState | null>(null);
 
 export default function useDragDrop(
   onDragStart: (square: number) => void,
-  onMove: (move: c.Move) => void,
+  onDragEnd: (move: c.Move) => void,
 ) {
   const dragStart = (ev: PointerEvent, square: number) => {
     if (ev.pointerType !== 'mouse') return;
@@ -27,6 +28,7 @@ export default function useDragDrop(
     currentDrag.value = {
       pieceElement,
       originSquare: square,
+      hoveredSquare: square,
       x: ev.clientX,
       y: ev.clientY,
       offsetX: ev.clientX - rect.left,
@@ -40,26 +42,35 @@ export default function useDragDrop(
     if (currentDrag.value) {
       currentDrag.value.x = ev.clientX;
       currentDrag.value.y = ev.clientY;
+      const hovered = squareUnderPoint(ev.clientX, ev.clientY);
+      currentDrag.value.hoveredSquare = hovered ? Number(hovered.id) : null;
     }
   };
 
-  const dragEnd = (ev: PointerEvent) => {
+  const dragEnd = () => {
     if (!currentDrag.value) return;
 
-    currentDrag.value.pieceElement.style.setProperty('pointer-events', 'none');
-    const el = document.elementFromPoint(currentDrag.value.x, currentDrag.value.y);
-    const squareElement = el?.closest('.Square') as HTMLElement | null;
+    const squareElement = squareUnderPoint(currentDrag.value.x, currentDrag.value.y);
 
     if (squareElement) {
-      onMove({
+      onDragEnd({
         originSquare: currentDrag.value.originSquare,
         targetSquare: Number(squareElement.id),
         type: c.MoveType.Normal,
       });
     }
 
-    currentDrag.value.pieceElement.style.setProperty('pointer-events', 'all');
     currentDrag.value = null;
+  };
+
+  const squareUnderPoint = (x: number, y: number): HTMLElement | null => {
+    const elements = document.elementsFromPoint(x, y);
+    for (const el of elements) {
+      if (el === currentDrag.value?.pieceElement) continue;
+      const square = el.closest('.Square') as HTMLElement | null;
+      if (square) return square;
+    }
+    return null;
   };
 
   return { dragStart, dragging, dragEnd, currentDrag };

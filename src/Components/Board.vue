@@ -1,28 +1,45 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed } from 'vue';
+import { onMounted, onUnmounted, computed, mergeProps } from 'vue';
 import * as utils from '@/utils';
 import * as c from '@/types';
+import * as mg from '@/moveGenerator';
 import useBoard from '@/Composables/useBoard';
 import useDragDrop from '@/Composables/useDragDrop';
 
-const { board8x8, loadFEN } = useBoard();
+const { board8x8, legalMoves, currentPlayer, switchPlayer, loadFEN } = useBoard();
 const { dragStart, dragging, dragEnd, currentDrag } = useDragDrop(
   (square: number) => {
     onDragStart(square);
   },
   (move: c.Move) => {
-    onMove(move);
+    onDragEnd(move);
   },
 );
 
 const onDragStart = (square: number) => {
   if (!squares.value[square]) return;
   squares.value[square].highlighted = true;
+  mg.getLegalMovesOfPiece(square, legalMoves.value).forEach((move) => {
+    if (move.isCapture) {
+      squares.value[move.targetSquare]!.legalCapture = true;
+    } else {
+      squares.value[move.targetSquare]!.legalMove = true;
+    }
+  });
 };
 
-const onMove = (move: c.Move) => {
-  if (move.originSquare === move.targetSquare) {
+const onDragEnd = (move: c.Move) => {
+  const isLegalMove = legalMoves.value.some(
+    (legalMove) =>
+      legalMove.originSquare === move.originSquare && legalMove.targetSquare === move.targetSquare,
+  );
+
+  if (!isLegalMove) {
     squares.value[move.originSquare]!.highlighted = false;
+    squares.value.forEach((square) => {
+      if (square.legalMove) square.legalMove = false;
+      if (square.legalCapture) square.legalCapture = false;
+    });
     return;
   }
 
@@ -31,6 +48,7 @@ const onMove = (move: c.Move) => {
 
   squares.value[move.originSquare]!.highlighted = true;
   squares.value[move.targetSquare]!.highlighted = true;
+  currentPlayer.value = switchPlayer(currentPlayer.value);
 };
 
 loadFEN(board8x8.value);
@@ -50,6 +68,8 @@ const squares = computed(() =>
     isFileIndicator: utils.toRank(index) === 0,
     color: (utils.toRank(index) + utils.toFile(index)) % 2 !== 0 ? 'Light' : 'Dark',
     highlighted: false,
+    legalMove: false,
+    legalCapture: false,
   })),
 );
 
@@ -72,7 +92,13 @@ onUnmounted(() => {
         :key="square.index"
         :id="square.index.toString()"
         class="Square"
-        :class="[square.color, { Highlighted: square.highlighted }]"
+        :class="[
+          square.color,
+          { Highlighted: square.highlighted },
+          { LegalMove: square.legalMove },
+          { LegalCapture: square.legalCapture },
+          { HoverEffects: currentDrag?.hoveredSquare === square.index },
+        ]"
       >
         <span v-if="square.isRankIndicator" :class="{ RankIndicator: square.isRankIndicator }">{{
           utils.toRank(square.index) + 1
@@ -96,7 +122,12 @@ onUnmounted(() => {
           "
           :src="getPieceImgURL(square.piece)"
           draggable="false"
-          @pointerdown="(ev: PointerEvent) => dragStart(ev, square.index)"
+          @pointerdown="
+            (ev: PointerEvent) => {
+              if (utils.getPieceColor(board8x8[square.index]!) !== currentPlayer) return;
+              dragStart(ev, square.index);
+            }
+          "
         />
       </div>
     </div>
@@ -104,6 +135,11 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+* {
+  font-family: 'Trebuchet MS', Arial, sans-serif;
+  box-sizing: border-box;
+}
+
 #Board {
   display: flex;
   flex-wrap: wrap-reverse;
@@ -134,12 +170,32 @@ onUnmounted(() => {
   background-color: #ddc348;
 }
 
-.Square.Light.LegalMove {
-  background-color: #dd5959;
+.Square.HoverEffects {
+  box-shadow: inset 0 0 0 3px hsl(0, 0%, 95%);
 }
 
-.Square.Dark.LegalMove {
-  background-color: #c5444f;
+.Square.LegalMove::before {
+  content: '';
+  position: absolute;
+  width: 30%;
+  height: 30%;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 50%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.Square.LegalCapture::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  box-shadow: inset 0 0 0 5px rgba(0, 0, 0, 0.15);
+  border-radius: 50%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .Square.Light span.RankIndicator,
@@ -154,7 +210,6 @@ onUnmounted(() => {
 
 .Square span.RankIndicator {
   position: absolute;
-  font-family: 'Trebuchet MS', sans-serif;
   top: 0.5px;
   left: 3.5px;
   font-size: 15px;
@@ -162,7 +217,6 @@ onUnmounted(() => {
 
 .Square span.FileIndicator {
   position: absolute;
-  font-family: 'Trebuchet MS', sans-serif;
   bottom: 0.5px;
   right: 3.5px;
   font-size: 15px;

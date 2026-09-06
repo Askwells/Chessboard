@@ -18,6 +18,25 @@ export function generatePseudolegalMoves(boardState10x12: number[], player: c.Co
       case c.PieceType.knight:
         moves.push(...generateKnightMoves(index, boardState10x12, player));
         break;
+      case c.PieceType.bishop:
+        moves.push(...generateSlidingPieceMoves(index, boardState10x12, player, [9, -9, 11, -11]));
+        break;
+      case c.PieceType.rook:
+        moves.push(...generateSlidingPieceMoves(index, boardState10x12, player, [10, -10, 1, -1]));
+        break;
+      case c.PieceType.queen:
+        moves.push(
+          ...generateSlidingPieceMoves(
+            index,
+            boardState10x12,
+            player,
+            [1, -1, 9, -9, 10, -10, 11, -11],
+          ),
+        );
+        break;
+      case c.PieceType.king:
+        moves.push(...generateKingMoves(index, boardState10x12, player));
+        break;
     }
   }
 
@@ -85,6 +104,60 @@ function generatePawnMoves(index: number, boardState10x12: number[], player: c.C
 function generateKnightMoves(index: number, boardState10x12: number[], player: c.Color): c.Move[] {
   const moves: c.Move[] = [];
   const offsets = [-21, -19, -12, -8, 8, 12, 19, 21];
+
+  for (const offset of offsets) {
+    let candidateMove = index + offset;
+    const sq = boardState10x12[candidateMove];
+    if (sq === c.offBoard) continue;
+    if (sq !== c.empty && utils.getPieceColor(sq!) === player) continue;
+
+    moves.push({
+      originSquare: index,
+      targetSquare: candidateMove,
+      type: c.MoveType.Normal,
+      isCapture: sq !== c.empty,
+    });
+  }
+
+  return moves;
+}
+
+function generateSlidingPieceMoves(
+  index: number,
+  boardState10x12: number[],
+  player: c.Color,
+  dirs: number[],
+): c.Move[] {
+  const moves: c.Move[] = [];
+
+  for (const dir of dirs) {
+    let step = 1;
+    let candidateMove = index + dir * step;
+
+    while (boardState10x12[candidateMove] !== c.offBoard) {
+      const isOccupied = boardState10x12[candidateMove] !== c.empty;
+      if (isOccupied && utils.getPieceColor(boardState10x12[candidateMove]!) === player) break;
+
+      moves.push({
+        originSquare: index,
+        targetSquare: candidateMove,
+        type: c.MoveType.Normal,
+        isCapture: isOccupied,
+      });
+
+      if (isOccupied) break;
+
+      step++;
+      candidateMove = index + dir * step;
+    }
+  }
+
+  return moves;
+}
+
+function generateKingMoves(index: number, boardState10x12: number[], player: c.Color) {
+  const moves: c.Move[] = [];
+  const offsets = [1, -1, 9, -9, 10, -10, 11, -11];
 
   for (const offset of offsets) {
     let candidateMove = index + offset;

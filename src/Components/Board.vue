@@ -174,10 +174,12 @@ onUnmounted(() => {
 
 .Square.Light {
   background-color: #f0dab5;
+  color: #b58763;
 }
 
 .Square.Dark {
   background-color: #b58763;
+  color: #f0dab5;
 }
 
 .Square.Light.Highlighted {
@@ -216,28 +218,18 @@ onUnmounted(() => {
   transform: translate(-50%, -50%);
 }
 
-.Square.Light span.RankIndicator,
-.Square.Light span.FileIndicator {
-  color: #b58763;
-}
-
-.Square.Dark span.RankIndicator,
-.Square.Dark span.FileIndicator {
-  color: #f0dab5;
-}
-
 .Square span.RankIndicator {
   position: absolute;
   top: 0.5px;
   left: 3.5px;
-  font-size: 15px;
+  font-size: 17.5px;
 }
 
 .Square span.FileIndicator {
   position: absolute;
   bottom: 0.5px;
   right: 3.5px;
-  font-size: 15px;
+  font-size: 17.5px;
 }
 
 .Piece {

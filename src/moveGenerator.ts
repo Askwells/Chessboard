@@ -1,7 +1,11 @@
 import * as c from '@/types';
 import * as utils from '@/utils';
 
-export function generatePseudolegalMoves(boardState10x12: number[], player: c.Color): c.Move[] {
+export function generatePseudolegalMoves(
+  boardState10x12: number[],
+  positionMeta: c.PositionMeta,
+  player: c.Color,
+): c.Move[] {
   let moves: c.Move[] = [];
 
   for (let index = 0; index < boardState10x12.length; index++) {
@@ -35,7 +39,7 @@ export function generatePseudolegalMoves(boardState10x12: number[], player: c.Co
         );
         break;
       case c.PieceType.king:
-        moves.push(...generateKingMoves(index, boardState10x12, player));
+        moves.push(...generateKingMoves(index, boardState10x12, positionMeta, player));
         break;
     }
   }
@@ -155,7 +159,12 @@ function generateSlidingPieceMoves(
   return moves;
 }
 
-function generateKingMoves(index: number, boardState10x12: number[], player: c.Color) {
+function generateKingMoves(
+  index: number,
+  boardState10x12: number[],
+  positionMeta: c.PositionMeta,
+  player: c.Color,
+) {
   const moves: c.Move[] = [];
   const offsets = [1, -1, 9, -9, 10, -10, 11, -11];
 
@@ -171,6 +180,44 @@ function generateKingMoves(index: number, boardState10x12: number[], player: c.C
       type: c.MoveType.Normal,
       isCapture: sq !== c.empty,
     });
+  }
+
+  const kingsideCastlingRights =
+    player === c.Color.white
+      ? positionMeta.castlingRights.whiteKingside
+      : positionMeta.castlingRights.blackKingside;
+  const queensideCastlingRights =
+    player === c.Color.white
+      ? positionMeta.castlingRights.whiteQueenside
+      : positionMeta.castlingRights.blackQueenside;
+
+  const bSquare = player === c.Color.white ? c.b1 : c.b8;
+  const cSquare = player === c.Color.white ? c.c1 : c.c8;
+  const dSquare = player === c.Color.white ? c.d1 : c.d8;
+  const fSquare = player === c.Color.white ? c.f1 : c.f8;
+  const gSquare = player === c.Color.white ? c.g1 : c.g8;
+
+  if (kingsideCastlingRights) {
+    const fTo10x12 = utils.indices8x8To10x12[fSquare]!;
+    const gTo10x12 = utils.indices8x8To10x12[gSquare]!;
+
+    if (boardState10x12[fTo10x12] === c.empty && boardState10x12[gTo10x12] === c.empty) {
+      moves.push({ originSquare: index, targetSquare: gTo10x12, type: c.MoveType.CastleKingside });
+    }
+  }
+
+  if (queensideCastlingRights) {
+    const bTo10x12 = utils.indices8x8To10x12[bSquare]!;
+    const cTo10x12 = utils.indices8x8To10x12[cSquare]!;
+    const dTo10x12 = utils.indices8x8To10x12[dSquare]!;
+
+    if (
+      boardState10x12[bTo10x12] === c.empty &&
+      boardState10x12[cTo10x12] === c.empty &&
+      boardState10x12[dTo10x12] === c.empty
+    ) {
+      moves.push({ originSquare: index, targetSquare: cTo10x12, type: c.MoveType.CastleQueenside });
+    }
   }
 
   return moves;

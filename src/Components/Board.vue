@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed, mergeProps } from 'vue';
+import { onMounted, onUnmounted, computed } from 'vue';
 import * as utils from '@/utils';
 import * as c from '@/types';
 import * as mg from '@/moveGenerator';
@@ -7,8 +7,10 @@ import useBoard from '@/Composables/useBoard';
 import useDragDrop from '@/Composables/useDragDrop';
 import moveSoundURL from '@/Assets/Sounds/move.mp3';
 import captureSoundURL from '@/Assets/Sounds/capture.mp3';
+import castlingSoundURL from '@/Assets/Sounds/castle.mp3';
+import promotionSoundURL from '@/Assets/Sounds/promote.mp3';
 
-const { board8x8, legalMoves, currentPlayer, switchPlayer, loadFEN } = useBoard();
+const { board8x8, legalMoves, positionMeta, switchPlayer, loadFEN, makeMove } = useBoard();
 const { dragStart, dragging, dragEnd, currentDrag } = useDragDrop(
   (square: number) => {
     onDragStart(square);
@@ -45,27 +47,31 @@ const onDragEnd = (move: c.Move) => {
     return;
   }
 
-  board8x8.value[legalMove.targetSquare] = board8x8.value[legalMove.originSquare] as number;
-  if (legalMove.type === c.MoveType.PawnPromotion) {
-    board8x8.value[legalMove.targetSquare] =
-      utils.getPieceColor(board8x8.value[legalMove.targetSquare]!) === c.Color.white
-        ? c.Piece.whiteQueen
-        : c.Piece.blackQueen;
-  }
-  board8x8.value[legalMove.originSquare] = c.empty;
+  makeMove(legalMove, board8x8.value, positionMeta.value);
 
   squares.value[legalMove.originSquare]!.highlighted = true;
   squares.value[legalMove.targetSquare]!.highlighted = true;
 
-  if (legalMove.isCapture) {
+  if (legalMove.isCapture && legalMove.type !== c.MoveType.PawnPromotion) {
     const sound = new Audio(captureSoundURL);
     sound.play();
   } else {
-    const sound = new Audio(moveSoundURL);
-    sound.play();
+    if (
+      legalMove.type === c.MoveType.CastleKingside ||
+      legalMove.type === c.MoveType.CastleQueenside
+    ) {
+      const sound = new Audio(castlingSoundURL);
+      sound.play();
+    } else if (legalMove.type === c.MoveType.PawnPromotion) {
+      const sound = new Audio(promotionSoundURL);
+      sound.play();
+    } else {
+      const sound = new Audio(moveSoundURL);
+      sound.play();
+    }
   }
 
-  currentPlayer.value = switchPlayer(currentPlayer.value);
+  positionMeta.value.currentPlayer = switchPlayer(positionMeta.value.currentPlayer);
 };
 
 loadFEN(board8x8.value);
@@ -141,7 +147,8 @@ onUnmounted(() => {
           draggable="false"
           @pointerdown="
             (ev: PointerEvent) => {
-              if (utils.getPieceColor(board8x8[square.index]!) !== currentPlayer) return;
+              if (utils.getPieceColor(board8x8[square.index]!) !== positionMeta.currentPlayer)
+                return;
               dragStart(ev, square.index);
             }
           "

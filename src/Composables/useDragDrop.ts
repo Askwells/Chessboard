@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import * as c from '@/types';
+import * as c from '@/Core/types';
 
 type DragState = {
   pieceElement: HTMLElement;
@@ -14,10 +14,10 @@ type DragState = {
 let currentDrag = ref<DragState | null>(null);
 
 export default function useDragDrop(
-  onDragStart: (square: number) => void,
+  onDragStart: (index: number) => void,
   onDragEnd: (move: c.Move) => void,
 ) {
-  const dragStart = (ev: PointerEvent, square: number) => {
+  const dragStart = (ev: PointerEvent, index: number) => {
     if (ev.pointerType !== 'mouse') return;
     // Accept only left mouse button input
     if (ev.button !== 0) return;
@@ -27,15 +27,15 @@ export default function useDragDrop(
 
     currentDrag.value = {
       pieceElement,
-      originSquare: square,
-      hoveredSquare: square,
+      originSquare: index,
+      hoveredSquare: index,
       x: ev.clientX,
       y: ev.clientY,
       offsetX: ev.clientX - rect.left,
       offsetY: ev.clientY - rect.top,
     };
 
-    onDragStart(square);
+    onDragStart(index);
   };
 
   const dragging = (ev: PointerEvent) => {

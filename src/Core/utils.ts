@@ -1,4 +1,4 @@
-import * as c from '@/types';
+import * as c from '@/Core/types';
 
 export const indices8x8To10x12 = Array.from({ length: 64 }, (_, index8x8) => {
   return (toRank(index8x8) + 2) * 10 + (toFile(index8x8) + 1);

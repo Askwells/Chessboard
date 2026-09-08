@@ -1,29 +1,27 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, computed } from 'vue';
-import * as utils from '@/utils';
-import * as c from '@/types';
-import * as mg from '@/moveGenerator';
+import * as utils from '@/Core/utils';
+import * as c from '@/Core/types';
+import * as mg from '@/Core/moveGenerator';
 import useBoard from '@/Composables/useBoard';
 import useDragDrop from '@/Composables/useDragDrop';
-import moveSoundURL from '@/Assets/Sounds/move.mp3';
-import captureSoundURL from '@/Assets/Sounds/capture.mp3';
-import castlingSoundURL from '@/Assets/Sounds/castle.mp3';
-import promotionSoundURL from '@/Assets/Sounds/promote.mp3';
+import * as sounds from '@/Assets/Sounds';
 
-const { board8x8, legalMoves, positionMeta, switchPlayer, loadFEN, makeMove } = useBoard();
+const { state, legalMoves, switchPlayer, loadFEN, makeMove } = useBoard();
 const { dragStart, dragging, dragEnd, currentDrag } = useDragDrop(
-  (square: number) => {
-    onDragStart(square);
+  (index: number) => {
+    onDragStart(index);
   },
   (move: c.Move) => {
     onDragEnd(move);
   },
 );
 
-const onDragStart = (square: number) => {
-  if (!squares.value[square]) return;
-  squares.value[square].highlighted = true;
-  mg.getLegalMovesOfPiece(square, legalMoves.value).forEach((move) => {
+const onDragStart = (index: number) => {
+  if (!squares.value[index]) return;
+
+  squares.value[index].highlighted = true;
+  mg.getLegalMovesOfPiece(index, legalMoves.value).forEach((move) => {
     if (move.isCapture) {
       squares.value[move.targetSquare]!.legalCapture = true;
     } else {
@@ -47,34 +45,34 @@ const onDragEnd = (move: c.Move) => {
     return;
   }
 
-  makeMove(legalMove, board8x8.value, positionMeta.value);
+  state.value = makeMove(legalMove, state.value);
 
   squares.value[legalMove.originSquare]!.highlighted = true;
   squares.value[legalMove.targetSquare]!.highlighted = true;
 
   if (legalMove.isCapture && legalMove.type !== c.MoveType.PawnPromotion) {
-    const sound = new Audio(captureSoundURL);
+    const sound = new Audio(sounds.capture);
     sound.play();
   } else {
     if (
       legalMove.type === c.MoveType.CastleKingside ||
       legalMove.type === c.MoveType.CastleQueenside
     ) {
-      const sound = new Audio(castlingSoundURL);
+      const sound = new Audio(sounds.castle);
       sound.play();
     } else if (legalMove.type === c.MoveType.PawnPromotion) {
-      const sound = new Audio(promotionSoundURL);
+      const sound = new Audio(sounds.promote);
       sound.play();
     } else {
-      const sound = new Audio(moveSoundURL);
+      const sound = new Audio(sounds.move);
       sound.play();
     }
   }
 
-  positionMeta.value.currentPlayer = switchPlayer(positionMeta.value.currentPlayer);
+  state.value.meta.currentPlayer = switchPlayer(state.value.meta.currentPlayer);
 };
 
-loadFEN(board8x8.value);
+state.value = loadFEN();
 
 const getPieceImgURL = (piece: c.Piece) => {
   return new URL(
@@ -84,7 +82,7 @@ const getPieceImgURL = (piece: c.Piece) => {
 };
 
 const squares = computed(() =>
-  board8x8.value.map((piece, index) => ({
+  state.value.board.map((piece, index) => ({
     piece,
     index,
     isRankIndicator: utils.toFile(index) === 0,
@@ -147,7 +145,7 @@ onUnmounted(() => {
           draggable="false"
           @pointerdown="
             (ev: PointerEvent) => {
-              if (utils.getPieceColor(board8x8[square.index]!) !== positionMeta.currentPlayer)
+              if (utils.getPieceColor(state.board[square.index]!) !== state.meta.currentPlayer)
                 return;
               dragStart(ev, square.index);
             }
@@ -160,7 +158,7 @@ onUnmounted(() => {
 
 <style scoped>
 * {
-  font-family: 'Trebuchet MS', Arial, sans-serif;
+  font-family: Arial, sans-serif;
   font-weight: bold;
   box-sizing: border-box;
 }
@@ -240,11 +238,12 @@ onUnmounted(() => {
 }
 
 .Piece {
+  position: relative;
+  z-index: 1;
   width: 70px;
   height: 70px;
   user-select: none;
   cursor: grab;
-  z-index: 10;
 }
 
 .Piece.Dragging {

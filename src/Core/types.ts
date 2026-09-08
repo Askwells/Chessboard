@@ -39,12 +39,17 @@ export type CastlingRights = {
   blackQueenside: boolean;
 };
 
-export type PositionMeta = {
+export type StateMeta = {
   currentPlayer: Color;
   castlingRights: CastlingRights;
   enPassantTargetSquare: number | null;
   halfmoveClock: number;
   fullmoveNumber: number;
+};
+
+export type State = {
+  board: number[];
+  meta: StateMeta;
 };
 
 export enum MoveType {

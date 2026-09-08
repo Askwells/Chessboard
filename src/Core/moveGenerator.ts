@@ -1,45 +1,58 @@
-import * as c from '@/types';
-import * as utils from '@/utils';
+import * as c from '@/Core/types';
+import * as utils from '@/Core/utils';
 
 export function generatePseudolegalMoves(
   boardState10x12: number[],
-  positionMeta: c.PositionMeta,
-  player: c.Color,
+  stateMeta: c.StateMeta,
 ): c.Move[] {
   let moves: c.Move[] = [];
 
   for (let index = 0; index < boardState10x12.length; index++) {
     const piece = boardState10x12[index];
     if (!piece || piece === c.offBoard || piece === c.empty) continue;
-    if (utils.getPieceColor(piece) !== player) continue;
+    if (utils.getPieceColor(piece) !== stateMeta.currentPlayer) continue;
 
     const pieceType = utils.getPieceType(piece);
 
     switch (pieceType) {
       case c.PieceType.pawn:
-        moves.push(...generatePawnMoves(index, boardState10x12, player));
+        moves.push(...generatePawnMoves(index, boardState10x12, stateMeta.currentPlayer));
         break;
       case c.PieceType.knight:
-        moves.push(...generateKnightMoves(index, boardState10x12, player));
+        moves.push(...generateKnightMoves(index, boardState10x12, stateMeta.currentPlayer));
         break;
       case c.PieceType.bishop:
-        moves.push(...generateSlidingPieceMoves(index, boardState10x12, player, [9, -9, 11, -11]));
+        moves.push(
+          ...generateSlidingPieceMoves(
+            index,
+            boardState10x12,
+            stateMeta.currentPlayer,
+            [9, -9, 11, -11],
+          ),
+        );
         break;
       case c.PieceType.rook:
-        moves.push(...generateSlidingPieceMoves(index, boardState10x12, player, [10, -10, 1, -1]));
+        moves.push(
+          ...generateSlidingPieceMoves(
+            index,
+            boardState10x12,
+            stateMeta.currentPlayer,
+            [10, -10, 1, -1],
+          ),
+        );
         break;
       case c.PieceType.queen:
         moves.push(
           ...generateSlidingPieceMoves(
             index,
             boardState10x12,
-            player,
+            stateMeta.currentPlayer,
             [1, -1, 9, -9, 10, -10, 11, -11],
           ),
         );
         break;
       case c.PieceType.king:
-        moves.push(...generateKingMoves(index, boardState10x12, positionMeta, player));
+        moves.push(...generateKingMoves(index, boardState10x12, stateMeta));
         break;
     }
   }
@@ -159,12 +172,7 @@ function generateSlidingPieceMoves(
   return moves;
 }
 
-function generateKingMoves(
-  index: number,
-  boardState10x12: number[],
-  positionMeta: c.PositionMeta,
-  player: c.Color,
-) {
+function generateKingMoves(index: number, boardState10x12: number[], stateMeta: c.StateMeta) {
   const moves: c.Move[] = [];
   const offsets = [1, -1, 9, -9, 10, -10, 11, -11];
 
@@ -172,7 +180,7 @@ function generateKingMoves(
     let candidateMove = index + offset;
     const sq = boardState10x12[candidateMove];
     if (sq === c.offBoard) continue;
-    if (sq !== c.empty && utils.getPieceColor(sq!) === player) continue;
+    if (sq !== c.empty && utils.getPieceColor(sq!) === stateMeta.currentPlayer) continue;
 
     moves.push({
       originSquare: index,
@@ -183,19 +191,19 @@ function generateKingMoves(
   }
 
   const kingsideCastlingRights =
-    player === c.Color.white
-      ? positionMeta.castlingRights.whiteKingside
-      : positionMeta.castlingRights.blackKingside;
+    stateMeta.currentPlayer === c.Color.white
+      ? stateMeta.castlingRights.whiteKingside
+      : stateMeta.castlingRights.blackKingside;
   const queensideCastlingRights =
-    player === c.Color.white
-      ? positionMeta.castlingRights.whiteQueenside
-      : positionMeta.castlingRights.blackQueenside;
+    stateMeta.currentPlayer === c.Color.white
+      ? stateMeta.castlingRights.whiteQueenside
+      : stateMeta.castlingRights.blackQueenside;
 
-  const bSquare = player === c.Color.white ? c.b1 : c.b8;
-  const cSquare = player === c.Color.white ? c.c1 : c.c8;
-  const dSquare = player === c.Color.white ? c.d1 : c.d8;
-  const fSquare = player === c.Color.white ? c.f1 : c.f8;
-  const gSquare = player === c.Color.white ? c.g1 : c.g8;
+  const bSquare = stateMeta.currentPlayer === c.Color.white ? c.b1 : c.b8;
+  const cSquare = stateMeta.currentPlayer === c.Color.white ? c.c1 : c.c8;
+  const dSquare = stateMeta.currentPlayer === c.Color.white ? c.d1 : c.d8;
+  const fSquare = stateMeta.currentPlayer === c.Color.white ? c.f1 : c.f8;
+  const gSquare = stateMeta.currentPlayer === c.Color.white ? c.g1 : c.g8;
 
   if (kingsideCastlingRights) {
     const fTo10x12 = utils.indices8x8To10x12[fSquare]!;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed } from 'vue';
+import { onMounted, onUnmounted, computed, ref, watch } from 'vue';
 import * as utils from '@/Core/utils';
 import * as c from '@/Core/types';
 import * as mg from '@/Core/moveGenerator';
@@ -17,6 +17,22 @@ const { dragStart, dragging, dragEnd, currentDrag } = useDragDrop(
   },
 );
 
+const humanPlayer = c.Color.white;
+const computerMoveDelaySeconds = 1;
+const computerMoveTimeout = ref<number | null>(null);
+
+const playMoveSound = (move: c.Move) => {
+  if (move.isCapture && move.type !== c.MoveType.PawnPromotion) {
+    new Audio(sounds.capture).play();
+  } else if (move.type === c.MoveType.CastleKingside || move.type === c.MoveType.CastleQueenside) {
+    new Audio(sounds.castle).play();
+  } else if (move.type === c.MoveType.PawnPromotion) {
+    new Audio(sounds.promote).play();
+  } else {
+    new Audio(sounds.move).play();
+  }
+};
+
 const onDragStart = (index: number) => {
   if (!squares.value[index]) return;
 
@@ -32,8 +48,7 @@ const onDragStart = (index: number) => {
 
 const onDragEnd = (move: c.Move) => {
   const legalMove = legalMoves.value.find(
-    (legalMove) =>
-      legalMove.originSquare === move.originSquare && legalMove.targetSquare === move.targetSquare,
+    (lm) => lm.originSquare === move.originSquare && lm.targetSquare === move.targetSquare,
   );
 
   if (!legalMove) {
@@ -50,26 +65,73 @@ const onDragEnd = (move: c.Move) => {
   squares.value[legalMove.originSquare]!.highlighted = true;
   squares.value[legalMove.targetSquare]!.highlighted = true;
 
-  if (legalMove.isCapture && legalMove.type !== c.MoveType.PawnPromotion) {
-    const sound = new Audio(sounds.capture);
-    sound.play();
-  } else {
-    if (
-      legalMove.type === c.MoveType.CastleKingside ||
-      legalMove.type === c.MoveType.CastleQueenside
-    ) {
-      const sound = new Audio(sounds.castle);
-      sound.play();
-    } else if (legalMove.type === c.MoveType.PawnPromotion) {
-      const sound = new Audio(sounds.promote);
-      sound.play();
-    } else {
-      const sound = new Audio(sounds.move);
-      sound.play();
-    }
-  }
+  playMoveSound(legalMove);
 
   state.value.meta.currentPlayer = switchPlayer(state.value.meta.currentPlayer);
+};
+
+const SQUARE_SIZE = 70;
+
+const animatingPiece = ref<{
+  piece: c.Piece;
+  originSquare: number;
+  targetSquare: number;
+} | null>(null);
+const animatingPiecePos = ref<{ left: number; top: number } | null>(null);
+
+const getSquareOffset = (index: number) => {
+  const file = utils.toFile(index);
+  const rank = utils.toRank(index);
+  return {
+    left: file * SQUARE_SIZE,
+    top: (7 - rank) * SQUARE_SIZE,
+  };
+};
+
+const animateMove = (move: c.Move) => {
+  const legalMove = legalMoves.value.find(
+    (lm) => lm.originSquare === move.originSquare && lm.targetSquare === move.targetSquare,
+  );
+  if (!legalMove) return;
+
+  const piece = state.value.board[legalMove.originSquare];
+  if (!piece) return;
+
+  animatingPiece.value = {
+    piece,
+    originSquare: legalMove.originSquare,
+    targetSquare: legalMove.targetSquare,
+  };
+  animatingPiecePos.value = getSquareOffset(legalMove.originSquare);
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      animatingPiecePos.value = getSquareOffset(legalMove.targetSquare);
+    });
+  });
+};
+
+const onAnimatedPieceTransitionEnd = () => {
+  if (!animatingPiece.value) return;
+
+  const legalMove = legalMoves.value.find(
+    (lm) =>
+      lm.originSquare === animatingPiece.value!.originSquare &&
+      lm.targetSquare === animatingPiece.value!.targetSquare,
+  );
+
+  if (legalMove) {
+    state.value = makeMove(legalMove, state.value);
+    playMoveSound(legalMove);
+
+    squares.value[legalMove.originSquare]!.highlighted = true;
+    squares.value[legalMove.targetSquare]!.highlighted = true;
+
+    state.value.meta.currentPlayer = switchPlayer(state.value.meta.currentPlayer);
+  }
+
+  animatingPiece.value = null;
+  animatingPiecePos.value = null;
 };
 
 state.value = loadFEN();
@@ -94,6 +156,28 @@ const squares = computed(() =>
   })),
 );
 
+watch(
+  () => state.value.meta.currentPlayer,
+  () => {
+    if (computerMoveTimeout.value) {
+      clearTimeout(computerMoveTimeout.value);
+      computerMoveTimeout.value = null;
+    }
+
+    if (state.value.meta.currentPlayer === humanPlayer) return;
+
+    computerMoveTimeout.value = setTimeout(() => {
+      computerMoveTimeout.value = null;
+
+      if (state.value.meta.currentPlayer === humanPlayer) return;
+
+      const randomMove = legalMoves.value[Math.floor(Math.random() * legalMoves.value.length)];
+      if (randomMove) animateMove(randomMove);
+    }, computerMoveDelaySeconds * 1000);
+  },
+  { immediate: true },
+);
+
 onMounted(() => {
   window.addEventListener('pointermove', dragging);
   window.addEventListener('pointerup', dragEnd);
@@ -102,6 +186,10 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('pointermove', dragging);
   window.removeEventListener('pointerup', dragEnd);
+  if (computerMoveTimeout.value) {
+    clearTimeout(computerMoveTimeout.value);
+    computerMoveTimeout.value = null;
+  }
 });
 </script>
 
@@ -128,7 +216,11 @@ onUnmounted(() => {
           utils.indexToAlgebraic(square.index)[0]
         }}</span>
         <img
-          v-if="square.piece"
+          v-if="
+            square.piece &&
+            animatingPiece?.originSquare !== square.index &&
+            animatingPiece?.targetSquare !== square.index
+          "
           class="Piece"
           :class="{
             Dragging: currentDrag?.originSquare === square.index,
@@ -145,13 +237,21 @@ onUnmounted(() => {
           draggable="false"
           @pointerdown="
             (ev: PointerEvent) => {
-              if (utils.getPieceColor(state.board[square.index]!) !== state.meta.currentPlayer)
-                return;
+              if (utils.getPieceColor(state.board[square.index]!) !== humanPlayer) return;
               dragStart(ev, square.index);
             }
           "
         />
       </div>
+
+      <img
+        v-if="animatingPiece && animatingPiecePos"
+        class="Piece AnimatedPiece"
+        :src="getPieceImgURL(animatingPiece.piece)"
+        :style="{ left: `${animatingPiecePos.left}px`, top: `${animatingPiecePos.top}px` }"
+        draggable="false"
+        @transitionend="onAnimatedPieceTransitionEnd"
+      />
     </div>
   </main>
 </template>
@@ -169,6 +269,7 @@ onUnmounted(() => {
   width: 560px;
   height: 560px;
   user-select: none;
+  position: relative;
 }
 
 .Square {
@@ -250,6 +351,16 @@ onUnmounted(() => {
   position: fixed;
   z-index: 999;
   cursor: grabbing;
+  will-change: left, top;
+}
+
+.Piece.AnimatedPiece {
+  position: absolute;
+  z-index: 2;
+  cursor: default;
+  transition:
+    left 0.25s ease,
+    top 0.25s ease;
   will-change: left, top;
 }
 </style>

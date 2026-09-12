@@ -5,8 +5,7 @@ import * as c from '@/Core/types';
 import * as mg from '@/Core/moveGenerator';
 import useBoard from '@/Composables/useBoard';
 import useDragDrop from '@/Composables/useDragDrop';
-import MoveSound from '@/Assets/Sounds/Move.mp3';
-import CaptureSound from '@/Assets/Sounds/Capture.mp3';
+import * as sounds from '@/Assets/Sounds';
 
 const { state, legalMoves, switchPlayer, loadFEN, makeMove } = useBoard();
 const { dragStart, dragging, dragEnd, currentDrag } = useDragDrop(
@@ -23,10 +22,14 @@ const computerMoveDelaySeconds = 1;
 const computerMoveTimeout = ref<number | null>(null);
 
 const playMoveSound = (move: c.Move) => {
-  if (move.isCapture) {
-    new Audio(CaptureSound).play();
+  if (move.isCapture && move.type !== c.MoveType.PawnPromotion) {
+    new Audio(sounds.capture).play();
+  } else if (move.type === c.MoveType.CastleKingside || move.type === c.MoveType.CastleQueenside) {
+    new Audio(sounds.castle).play();
+  } else if (move.type === c.MoveType.PawnPromotion) {
+    new Audio(sounds.promote).play();
   } else {
-    new Audio(MoveSound).play();
+    new Audio(sounds.move).play();
   }
 };
 

@@ -138,7 +138,7 @@ state.value = loadFEN();
 
 const getPieceImgURL = (piece: c.Piece) => {
   return new URL(
-    `../Assets/Images/${utils.getPieceColor(piece) === c.Color.white ? 'w' : 'b'}${utils.pieceTypeToChar(utils.getPieceType(piece))}.svg`,
+    `../Assets/Images/${utils.getPieceColor(piece) === c.Color.white ? 'w' : 'b'}${utils.pieceTypeToChar(utils.getPieceType(piece))}.png`,
     import.meta.url,
   ).href;
 };
